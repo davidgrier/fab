@@ -1,0 +1,6 @@
+FAB 0.9
+
+Written by David G. Grier
+New York University
+
+Copyright (c) 2011 David G. Grier

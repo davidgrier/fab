@@ -1,0 +1,28 @@
+1. Create traps by SHIFT-Clicking on the screen.
+
+2, Destroy traps by CONTROL-Clicking on them.
+
+3. Move traps by clicking and dragging them:
+   * LEFT-MOUSE .......... drag to translate in the plane.
+   * MOUSE-WHEEL ......... roll to translate axially.
+   * MIDDLE-MOUSE ........ drag to rotate a group about its center.
+
+4. Group traps with the RIGHT mouse button.
+   * RIGHT-Click ......... adds an existing trap to the active group.
+   * SHIFT-RIGHT-Click ... creates a new trap and adds it.
+   * CONTROL-RIGHT-Click . removes a trap from the active group.
+   * RIGHT-DRAG .......... adds traps to the active group from a region.
+
+Trap icons change color depending on the operation you
+are performing.  
+   * GREEN ............... normal
+   * ORANGE .............. rotating
+   * RED ................. translating
+   * YELLOW .............. grouping
+   * PURPLE .............. immutable
+Immutable traps are created programmatically with fabc and cannot
+be translated or rotated, except under programmatic control.  They
+can be destroyed by CONTROL-Clicking.
+
+Additionally, the Status bar beneath the screen describes ongoing 
+events and processes

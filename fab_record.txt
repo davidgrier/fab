@@ -1,0 +1,18 @@
+To record video sequences, press the RECORD button
+next to the status line.  Every snapshot recorded by the
+video camera will be stored as a file whose name
+includes the timestamp formatted as the number of seconds 
+in the present day, with microsecond resolution.
+
+The directory into which files are recorded can be
+specified in the FILE menu.
+
+The file format for recorded images is a property of the
+recorder that can be chosen from the PROPERTIES menu.
+
+The recorder spawns multiple processes to improve performance
+and avoid dropped frames.  If too few of process threads are
+allocated, the recorder may drop frames.  Increasing the number
+of threads increases memory usage, and can overload the computer's
+storage system.  The number of threads is a property of the
+recorder that can be chosen from the PROPERTIES menu.

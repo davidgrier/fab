@@ -1,0 +1,61 @@
+;;;;;
+;
+; DGGhotCGHGPU::RefineArrizon
+;
+; Refines hologram by mixing amplitude information into phase
+; Reference:
+; Arrizon
+;
+pro DGGhotCGHGPU::RefineArrizon
+
+COMPILE_OPT IDL2, HIDDEN
+
+if ~isa(self.slm) then $
+   return
+
+if ~isa(self.traps) then $
+   return
+
+if self.refining eq 1 then $
+   return
+
+; target field in the SLM plane
+*self.psi = gpucomplex(*self.repsi, *self.impsi, LHS = *self.psi)
+
+; normalized amplitude of field
+*self.u0 = gpuabs(*self.psi, LHS = *self.u0) 
+max = gpumax(*self.u0)
+*self.u0 = gpuadd(1./max, *self.u0, 0., *self.u0, 0., LHS = *self.u0)
+
+; solution to J_0(g(a) = a
+*self.temp = gpuadd(2384335., *self.u0, 0., *self.u0, 16446243., $
+                    LHS = *self.temp)
+*self.temp = gpumult(1., *self.u0, 1., *self.temp, -51215222., $
+                     LHS = *self.temp)
+*self.temp = gpumult(1., *self.u0, 1., *self.temp, 100469158., $
+                     LHS = *self.temp)
+*self.temp = gpumult(1., *self.u0, 1., *self.temp, -167511147., $
+                     LHS = *self.temp)
+*self.temp = gpumult(1., *self.u0, 1., *self.temp, 645036903., $
+                     LHS = *self.temp)
+;*self.u0 = gpuadd(-1., *self.u0, 0., *self.u0, 1., LHS = *self.u0)
+*self.u0 = gpusqrt(1./265420800., -1., *self.u0, 1., 0., LHS = *self.u0)
+*self.temp = gpumult(*self.u0, *self.temp, LHS = *self.temp) ; g(a)
+
+; correct hologram
+*self.u0 = gpusin(*self.gpuphi, LHS = *self.u0)
+*self.u0 = gpumult(*self.temp, *self.u0, LHS = *self.gpuphi) ; g(a) sin(theta)
+*self.gpuphi = gpuadd(*self.gpuphi, *self.u0, LHS = *self.gpuphi)
+min = gpumin(*self.gpuphi)
+*self.gpuphi = gpuadd(128./!pi, *self.gpuphi, 0., *self.gpuphi, -128./!pi*min, $
+                      LHS = *self.gpuphi)
+
+*self.phi = byte(gpugetarr(*self.gpuphi))
+
+; done refining!
+self.refining = 1
+
+; project
+self.slm.setproperty, data = *self.phi
+
+end

@@ -1,0 +1,51 @@
+;;;;;
+;
+; DGGhotCGHGPU::Refine
+;
+; Perform one iteration of Adaptive-Additive hologram refinement
+;
+pro DGGhotCGHGPU::Refine
+
+COMPILE_OPT IDL2, HIDDEN
+
+if ~isa(self.slm) then $
+   return
+
+if ~isa(self.traps) then $
+   return
+
+if self.refining gt 20 then $
+   return
+
+if self.refining eq 0 then begin ; first refinement pass
+; compute the target field in the focal plane
+   *self.psi = gpucomplex(*self.repsi, *self.impsi, LHS = *self.psi)
+   *self.psi0 = gpufft(*self.psi, LHS = *self.psi0) ; what about plan?
+   *self.u0 = gpuabs(*self.psi0, LHS = *self.u0)
+   self.refining = 1
+end
+
+; compute current field in the focal plane
+*self.psi = gpucomplex(gpucos(*self.gpuphi), $
+                       gpusin(*self.gpuphi), LHS = *self.psi)
+*self.psi = gpufft(*self.psi, LHS = *self.psi)
+*self.temp = gpuabs(*self.psi, LHS = *self.temp) ; current amplitude
+
+; mix target amplitude with current amplitude
+*self.psi = gpudiv(*self.psi, *self.temp, LHS = *self.psi) ; pure phase
+*self.temp = gpuadd(0.5, *self.temp, 0.5, *self.u0, 0., LHS = *self.temp)
+*self.psi = gpumult(*self.temp, *self.psi, LHS = *self.psi)
+
+; transform back to SLM plane
+*self.psi = gpufft(*self.psi, /INVERSE, LHS = *self.psi)
+*self.temp =   gpuimaginary(*self.psi, LHS = *self.temp)
+*self.gpuphi = gpureal(*self.psi, LHS = *self.gpuphi)
+*self.gpuphi = gpuatan2(*self.temp, *self.gpuphi, LHS = *self.gpuphi)
+*self.phi = bytscl(gpugetarr(*self.gpuphi))
+
+self.refining++
+
+; project
+self.slm.setproperty, data = *self.phi
+
+end
