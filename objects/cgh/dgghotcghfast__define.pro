@@ -34,6 +34,9 @@
 ;         Default: 3 x 3 identity matrix.
 ;        (S,G)
 ;
+;    BACKGROUND [IGS] background field to be added to hologram.
+;         Default: None.
+;
 ; METHODS:
 ;    DGGhotCGHfast::GetProperty
 ;
@@ -48,8 +51,9 @@
 ; 03/25/2011 DGG Work with TRAPS rather than TRAPDATA.
 ; 09/02/2012 DGG Fixed bug in trap superposition pointed out by
 ;    David Ruffner and Ellery Russel.
+; 09/11/2013 DGG Added support for BACKGROUND keyword
 ;
-; Copyright (c) 2011-2012, David G. Grier
+; Copyright (c) 2011-2013 David G. Grier, David Ruffner and Ellery Russel
 ;-
 
 ;;;;;
@@ -72,7 +76,10 @@ if ~isa(self.traps) then begin ; no traps
 endif
 
 ;; field in the plane of the projecting device
-*self.psi *= complex(0.)
+if ptr_valid(self.background) then $
+   *self.psi = *self.background $
+else $
+   *self.psi *= complex(0.)
 foreach trap, *self.traps do begin
    pr = self.mat # (trap.rc - self.rc)
    ex = exp(*self.ikx * pr[0] + *self.ikxsq * pr[2])
