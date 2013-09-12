@@ -149,7 +149,7 @@ pro DGGhotCGH::Deallocate
 
 COMPILE_OPT IDL2, HIDDEN
 
-if isa(self.data) then $
+if ptr_valid(self.data) then $
    ptr_free, self.data
 
 if ptr_valid(self.background) then $
