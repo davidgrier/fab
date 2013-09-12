@@ -33,6 +33,9 @@
 ;    KC    [ GS] [eta, xi] coordinates of optical axis on SLM.
 ;         Default: Center of SLM.
 ;
+;    BACKGROUND [IGS] background field to be added to hologram.
+;         Default: None.
+;
 ; METHODS:
 ;    DGGhotCGHGPU::GetProperty
 ;
@@ -61,9 +64,11 @@
 ;    separate files for clarity.
 ; 06/12/2012 DGG Renamed gpuphi to phi.  Call own Cleanup before
 ;    DGGhotCGH::Cleanup.
-; 06/20/2012 DGG gpufltarr can have NAN values unless zeroed explicitly.
+; 06/20/2012 DGG gpufltarr can have NAN values unless zeroed
+; explicitly.
+; 09/11/2013 DGG Support for BACKGROUND.
 ;
-; Copyright (c) 2011-2012, David G. Grier
+; Copyright (c) 2011-2013 David G. Grier
 ;-
 
 ;;;;;
@@ -89,10 +94,17 @@ if ~isa(self.traps) then begin  ; no traps ...
 endif
 
 ;; field in the plane of the projecting device
-*self.repsi = gpuadd(0., *self.x, 0., *self.x, 0., $
-                     LHS = *self.repsi, /NONBLOCKING)
-*self.impsi = gpuadd(0., *self.x, 0., *self.x, 0., $
-                     LHS = *self.impsi, /NONBLOCKING)
+if ptr_valid(self.background) then begin
+   *self.repsi = gpuputarr(real_part(*self.background), $
+                           LHS = *self.repsi, /NONBLOCKING)
+   *self.impsi = gpuputarr(imaginary(*self.background), $
+                           LHS = *self.impsi, /NONBLOCKING)
+endif else begin
+   *self.repsi = gpuadd(0., *self.x, 0., *self.x, 0., $
+                        LHS = *self.repsi, /NONBLOCKING)
+   *self.impsi = gpuadd(0., *self.x, 0., *self.x, 0., $
+                        LHS = *self.impsi, /NONBLOCKING)
+endelse
 
 foreach trap, *self.traps do begin
    pr = self.mat # (trap.rc - self.rc)

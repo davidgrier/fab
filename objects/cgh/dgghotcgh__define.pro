@@ -32,6 +32,9 @@
 ;    KC     [ GS] [eta, xi] coordinates of optical axis on SLM.
 ;         Default: Center of SLM.
 ;
+;    BACKGROUND [IGS] background field to be added to hologram.
+;         Default: None.
+;
 ; METHODS:
 ;    DGGhotCGH::GetProperty
 ;
@@ -79,8 +82,9 @@
 ;    SetProperty.
 ; 06/12/2012 DGG Renamed phi to data.
 ; 06/20/2012 DGG Don't clobber traps during SetProperty.
+; 09/11/2013 DGG Introduced BACKGROUND keyword.
 ;
-; Copyright (c) 2011-2012, David G. Grier
+; Copyright (c) 2011-2013 David G. Grier
 ;-
 
 ;;;;;
@@ -113,7 +117,11 @@ self.refining = 0L
 if ~isa(self.slm) then $
    return
 
-*self.data *= 0b                ; ... send a blank CGH
+if ptr_valid(self.background) then $
+   *self.data = *self.background $
+else $
+   *self.data *= 0b             ; ... send a blank CGH
+
 self.slm.setproperty, data = *self.data
 
 end
@@ -143,6 +151,9 @@ COMPILE_OPT IDL2, HIDDEN
 
 if isa(self.data) then $
    ptr_free, self.data
+
+if ptr_valid(self.background) then $
+   ptr_free, self.background
 
 end
 
@@ -179,6 +190,7 @@ end
 pro DGGhotCGH::GetProperty, slm   = slm,   $
                             traps = traps, $
                             data  = data,  $
+                            background = background, $
                             rc    = rc,    $
                             xc    = xc,    $
                             yc    = yc,    $
@@ -207,6 +219,9 @@ if arg_present(traps) then $
 
 if arg_present(data) then $
    data = *self.data
+
+if arg_present(background) then $
+   background = ptr_valid(self.background) ? *self.background : 0
 
 if arg_present(rc) then $
    rc = self.rc
@@ -263,6 +278,7 @@ end
 ;
 pro DGGhotCGH::SetProperty, slm        = slm,      $
                             traps      = traps,    $
+                            background = background, $
                             rc         = rc,       $
                             xc         = xc,       $
                             yc         = yc,       $
@@ -291,6 +307,11 @@ if arg_present(traps) then begin
          self.traps = ptr_new(traps)
       endif
    endif
+endif
+
+if arg_present(background) then begin
+   if array_equal(size(background, /dimensions), self.dim) then $
+      self.background = ptr_new(background)
 endif
 
 if isa(rc, /number) then begin
@@ -337,6 +358,7 @@ end
 ;
 function DGGhotCGH::Init, slm        = slm,   $
                           traps      = traps, $
+                          background = background, $
                           rc         = rc,    $
                           mat        = mat,   $
                           kc         = kc,    $
@@ -351,6 +373,11 @@ if isa(slm, 'DGGhotSLM') then begin
    self.slm = slm
    self.allocate
    self.precompute
+endif
+
+if isa(background, /number, /array) then begin
+   if array_equal(size(background, /dimensions), self.dim) then $
+      self.background = ptr_new(background)
 endif
 
 if isa(rc, /number) then begin
@@ -438,6 +465,7 @@ struct = {DGGhotCGH, $
           rsq:      ptr_new(),     $ ; polar coordinates in SLM plane
           theta:    ptr_new(),     $ ;
           data:     ptr_new(),     $ ; computed hologram
+          background: ptr_new(),   $ ; background hologram
           refining: 0L             $ ; set if refining the hologram
          }
 end
