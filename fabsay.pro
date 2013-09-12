@@ -1,30 +1,20 @@
 pro fabsay, str, scale = scale, fuzz = fuzz
 
-common managed, ids, names, modalList
+COMPILE_OPT IDL2
 
-nmanaged = n_elements(ids)
-if (nmanaged lt 1) then begin
-   message, "fab is not running", /inf
-   return
-endif
-
-w = where(names eq 'fab', ninstances)
-if ninstances ne 1 then begin
-   message, "fab is not running", /inf
-   return
-endif
-
-widget_control, ids[w], get_uvalue = s
+s = getfab()
+if ~isa(s, 'fabstate') then return
 
 if n_elements(fuzz) ne 1 then $
    fuzz = 0.1
 
 p = textcoords(str, width, height, /center, fuzz = fuzz)
-if n_elements(scale) ne 1 then $
-   scale = 0.8 * 640/width
+if n_elements(scale) ne 1 then begin
+   dim = ((*s).o.camera).dimensions
+   scale = 0.8 * max(dim)/width
 p *= scale
-p[0,*] += 320
-p[1,*] += 240
+rc = (((*s).o.cgh).rc)[0:1]
+p += rc
 
 if n_elements(p) ge 2 then begin
    group = DGGhotTrapGroup(state = 1)
