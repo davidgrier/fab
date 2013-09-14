@@ -576,6 +576,11 @@ end
 
 ;;;;; The main event loop for the program
 
+pro fab_gui_event, event
+
+print, tag_names(event, /structure_name)
+end
+
 ;;;;;
 ;
 ; FAB_EVENT
@@ -960,6 +965,7 @@ void = widget_button(help_menu, value = 'Recording', $
                      EVENT_PRO = 'fab_help', UVALUE = 'RECORD')
 
 ;; window for drawing images and traps
+;wscreenbase = widget_base(wtlb, event_pro = 'fab_gui_event', /row)
 wscreen = widget_draw(wtlb, $
                       xsize = dimensions[0], $  ; geometry
                       ysize = dimensions[1], $

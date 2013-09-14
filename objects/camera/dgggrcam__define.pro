@@ -115,7 +115,17 @@ pro DGGgrCam::Snap
 
 COMPILE_OPT IDL2, HIDDEN
 
-self.setproperty, data = bytarr(self.dimensions[0], self.dimensions[1])
+; Blank image
+;self.setproperty, data = bytarr(self.dimensions[0], self.dimensions[1])
+; Poisson statistics makes a "slow" camera, suitable for testing
+; camera lab.
+;self.setproperty, $
+;    data = byte(randomu(seed, self.dimensions[0],self.dimensions[1], $
+;    poisson = 127))
+; Uniformly random values
+self.setproperty, $
+   data = byte(255*randomu(seed, self.dimensions[0], self.dimensions[1]))
+
 end
 
 ;;;;;
