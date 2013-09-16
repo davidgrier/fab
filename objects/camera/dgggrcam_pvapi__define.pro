@@ -51,8 +51,9 @@
 ;    modified so that they appear on propertysheet widgets.
 ; 05/04/2012 DGG Improved parameter checking in SetProperty.
 ; 05/24/2012 DGG SetProperty requires camera property; not optional.
+; 09/16/2013 DGG record timestamp for acquired frames.
 ;
-; Copyright (c) 2011-2012, David G. Grier
+; Copyright (c) 2011-2013 David G. Grier
 ;-
 
 ;;;;;
@@ -77,6 +78,7 @@ err = pvcapturequeueframe(self.camera, *self.buffer, self.flags, $
 err = pvcommandrun(self.camera, "FrameStartTriggerSoftware", $
                    debug = self.debug)
 err = pvcapturewaitforframedone(self.camera, 100, debug = self.debug)
+self.timestamp = systime(1)
 self.setproperty, data = *self.buffer
 end
 

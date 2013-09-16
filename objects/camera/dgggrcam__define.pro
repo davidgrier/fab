@@ -21,6 +21,7 @@
 ; PROPERTIES:
 ;    DIMENSIONS: [w,h] dimensions of image (pixels)
 ;    GRAYSCALE: if set, images should be cast to grayscale.
+;    TIMESTAMP: Double-precision system time at which frame was acquired.
 ;
 ; METHODS:
 ;    DGGgrCam::GetProperty
@@ -53,8 +54,9 @@
 ; 05/16/2012 DGG Inherits IDL_Object for implicit Get/SetProperty
 ; methods.
 ; 05/24/2012 DGG Snap() method requires order from IDLgrImage
+; 09/16/2013 DGG Support for timestamps.
 ; 
-; Copyright (c) 2011-2012 David G. Grier
+; Copyright (c) 2011-2013 David G. Grier
 ;-
 
 ;;;;;
@@ -116,16 +118,15 @@ pro DGGgrCam::Snap
 COMPILE_OPT IDL2, HIDDEN
 
 ; Blank image
-;self.setproperty, data = bytarr(self.dimensions[0], self.dimensions[1])
-; Poisson statistics makes a "slow" camera, suitable for testing
-; camera lab.
-;self.setproperty, $
-;    data = byte(randomu(seed, self.dimensions[0],self.dimensions[1], $
-;    poisson = 127))
-; Uniformly random values
-self.setproperty, $
-   data = byte(255*randomu(seed, self.dimensions[0], self.dimensions[1]))
+;data = bytarr(self.dimensions[0], self.dimensions[1])
 
+; Poisson statistics makes a "slow" camera
+;data = byte(randomu(seed, self.dimensions[0],self.dimensions[1], poisson = 127))
+
+; Uniformly distributed random values
+data = byte(255*randomu(seed, self.dimensions[0], self.dimensions[1]))
+self.timestamp = systime(1)
+self.setproperty, data = data
 end
 
 ;;;;;
@@ -185,6 +186,7 @@ end
 ; Get properties of the underlying IDLgrImage objects
 ;
 pro DGGgrCam::GetProperty, grayscale = grayscale, $
+                           timestamp = timestamp, $
                            debug = debug, $
                            _ref_extra = re
 
@@ -194,6 +196,9 @@ self->IDLgrImage::GetProperty, _extra = re
 
 if arg_present(grayscale) then $
    grayscale = self.grayscale
+
+if arg_present(timestamp) then $
+   timestamp = self.timestamp
 
 if arg_present(debug) then $
    debug = self.debug
@@ -261,7 +266,8 @@ COMPILE_OPT IDL2
 struct = {DGGgrCam, $
           inherits IDLgrImage, $
           inherits IDL_Object, $
-          grayscale:  0L,      $ ; acquire grayscale image
-          debug:      0L       $ ; internal variable for hardware interface
+          timestamp: 0D,       $ ; time at which last frame was acquired
+          grayscale: 0L,       $ ; acquire grayscale image
+          debug:     0L        $ ; internal variable for hardware interface
          }
 end

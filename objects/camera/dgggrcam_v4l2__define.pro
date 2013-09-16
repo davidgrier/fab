@@ -38,8 +38,9 @@
 ; 03/15/2011 DGG Adapted from DGGgrCam_OpenCV
 ; 03/22/2011 DGG Correctly implemented Snap.
 ; 03/23/2011 DGG use _ref_extra in Get/SetProperty and Init
+; 09/16/2013 DGG record timestamp for each acquired frame.
 ;
-; Copyright (c) 2011, David G. Grier
+; Copyright (c) 2011-2013 David G. Grier
 ;-
 
 ;;;;;
@@ -62,8 +63,10 @@ COMPILE_OPT IDL2, HIDDEN
 ok = call_external("idlv4l2.so", "idlv4l2_readframe", $
                    /cdecl, self.debug, $
                    (*self.stream).fd, *(self.buffer))
-if ok then $
+if ok then begin
+   self.timestamp = systime(1)
    self.setproperty, data = *self.buffer;, /no_copy
+endif
 end
 
 ;;;;;

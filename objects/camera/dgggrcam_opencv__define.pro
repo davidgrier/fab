@@ -42,8 +42,9 @@
 ; 04/29/2011 DGG make BRIGHTNESS and CONTRAST registered properties
 ;    that control camera operation
 ; 05/04/2012 DGG check parameters in Init and SetProperty.
+; 09/16/2013 DGG record timestamp for each acquired frame.
 ;
-; Copyright (c) 2011-2012, David G. Grier
+; Copyright (c) 2011-2013 David G. Grier
 ;-
 
 ;;;;;
@@ -74,6 +75,7 @@ if frameready then begin
                          *self.buffer, w, h, $
                          self.grayscale, $
                          self.debug)
+   self.timestamp = systime(1)
    self.setproperty, data = *self.buffer
 endif
 end
