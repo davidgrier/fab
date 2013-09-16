@@ -47,7 +47,7 @@ if delay lt (*s).timer then begin
    return
 endif
 
-widget_control, (*s).w.tlb, /clear_events
+;widget_control, (*s).w.tlb, /clear_events ; is this necessary?
 
 repeat begin
    t1 = systime(1)

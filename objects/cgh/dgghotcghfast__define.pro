@@ -20,7 +20,7 @@
 ;        Default: undefined: no traps
 ;        (I/G/S)        
 ;
-;    PHI: byte-value hologram, computed from TRAPS according
+;    DATA: byte-value hologram, computed from TRAPS according
 ;        to SLM specifications.
 ;        (G)
 ;
@@ -71,8 +71,8 @@ if ~isa(self.slm) then $
    return
 
 if ~isa(self.traps) then begin ; no traps
-   *self.phi *= 0b
-   self.slm.setproperty, data = *self.phi
+   *self.data *= 0b
+   self.slm.setproperty, data = *self.data
    return
 endif
 
@@ -95,8 +95,8 @@ foreach trap, *self.traps do begin
 endforeach
 
 ;; phase of the field in the plane of the projecting device
-*self.phi = bytscl(atan(*self.psi, /phase))
-self.slm.setproperty, data = *self.phi
+*self.data = bytscl(atan(*self.psi, /phase))
+self.slm.setproperty, data = *self.data
 end
 
 ;;;;;
