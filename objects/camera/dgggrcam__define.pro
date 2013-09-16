@@ -232,7 +232,7 @@ if isa(imagedata, /NUMBER, /ARRAY) then $
 else $
    ok = self->IDLgrImage::Init(_extra = re)
 if ~ok then $
-   return, 0
+   return, 0B
 
 if self.dimensions[0] eq 0 then $
    self.dimensions = [640, 480]

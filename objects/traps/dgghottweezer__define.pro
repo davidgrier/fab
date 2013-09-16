@@ -75,10 +75,11 @@ if (self->DGGhotTrap::Init(_extra = re) ne 1) then $
 ; override graphic
 npts = 10
 theta = 2.*!pi/(npts - 1.) * findgen(1, npts)
-x = sin(theta)
-y = cos(theta)
-z = replicate(0.1, 1, npts)
-self.graphic = ptr_new([x, y, z])
+r = findgen(3, npts)
+r[0, *] = sin(theta)
+r[1, *] = cos(theta)
+r[2, *] = 1.
+self.graphic = ptr_new(r, /no_copy)
 
 self.name = 'DGGhotTweezer'
 self.identifier = 'DGGhotTweezer'

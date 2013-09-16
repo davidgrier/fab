@@ -106,8 +106,10 @@
 ;   to pick file.  Calibration->Read asks for filename.
 ;   Single quotes for strings.  Updated parameter checking.
 ; 06/12/2012 DGG Added FAB_PHASE to provide random phases for traps.
+; 09/15/2013 DGG Support for callbacks during CGH calculations for
+;   better video response.
 ;
-; Copyright (c) 2010-2012, David G. Grier and Daniel Evans
+; Copyright (c) 2010-2013 David G. Grier and Daniel Evans
 ;-
 ;;;;;
 ;
@@ -576,193 +578,207 @@ end
 
 ;;;;; The main event loop for the program
 
-pro fab_gui_event, event
-
-print, tag_names(event, /structure_name)
-end
-
 ;;;;;
 ;
-; FAB_EVENT
+; FAB_VIDEO_UPDATE
 ;
-; Process the XMANAGER event queue
+; Update video display when wtimer ticks
 ;
-pro fab_event, event
+pro fab_video_update, arg
 
 COMPILE_OPT IDL2, HIDDEN
 
-widget_control, event.top, get_uvalue = s
-
-case tag_names(event, /structure_name) of
-   'WIDGET_TIMER': begin
-      widget_control, event.top, timer = (*s).timer ; reset timer
-   end
-
-   'WIDGET_DRAW': begin         ; GUI interaction with traps
-      xy = [event.x, event.y]
-      case fab_trapaction(event) of
-         'END_ACTION' : begin
-            if (*s).action eq 4 then $
-               fab_grouproi, s $
-            else $
-               fab_clearselection, s
-            widget_control, (*s).w.screen, draw_motion_events = 0
-         end         
-      
-         'MOV_Z': begin         ; Axial motion
-            this = fab_foundtrap(s, xy, /movable)
-            if isa(this) then $
-               *this->moveby, [0., 0., float(event.clicks)]
-         end
-
-         'MOV': begin           ; In-plane motion
-            case (*s).action of
-               2: *(*s).selected->moveto, xy
-               3: *(*s).selected->rotateto, xy
-               4: if isa((*s).roi) then $
-                  *(*s).roi->setproperty, r1 = xy
-               else:
-            endcase
-         end
-
-         'SEL_TRANS': begin     ; Select a group of traps for in-plane motion
-            fab_clearselection, s
-            this = fab_foundtrap(s, xy, /movable) ; only select movable group
-            if isa(this) then begin               ; ... got one
-               *this->setproperty, state = 2      ; ... so translate it
-               (*s).action = 2
-               widget_control, (*s).w.screen, /draw_motion_events
-               fab_status, s, "Translating"
-            endif
-            (*s).selected = this
-           end
-
-         'SEL_TRANS_ADD' : begin ; Add a trap in its own group
-            fab_clearselection, s
-            (*s).o.traps.add, $
-               DGGhotTrapGroup(DGGhotTweezer(rc = xy, $
-                                             phase = fab_phase(s)), state = 1)
-            fab_status, s, 'Added a trap'
-            fab_propertysheet, s, /reload
-         end
-         
-         'SEL_TRANS_REM' : begin ; Remove a group of traps
-            fab_clearselection, s
-            this = fab_foundtrap(s, xy) ; any trap is fair game
-            if isa(this) then begin     ; ... found one
-               obj_destroy, *this       ; ... destroy it
-               (*s).o.traps.project     ; ... update CGH and representation
-               fab_status, s, 'Removed a trap'
-            endif
-            fab_propertysheet, s, /reload
-         end
-
-         'SEL_ROT' : begin      ; Select a group of traps for rotation
-            fab_clearselection, s
-            this = fab_foundtrap(s, xy, /movable) ; only choose movable group
-            if isa(this) then begin               ; ... found one
-               if *this.count() ge 2 then begin   ; if it has enough traps
-                  (*s).selected = this            ; ... select it
-                  *this->setcenter                ; ... update its center
-                  *this->setproperty, state = 3   ; ... and rotate it
-                  (*s).action = 3
-                  widget_control, (*s).w.screen, /draw_motion_events
-                  fab_status, s, "Rotating"
-               endif
-            endif
-         end
-
-         'SEL_ROT_ADD' : begin  ; Add a trap in its own group
-            fab_clearselection, s
-            (*s).o.traps.add, $
-               DGGhotTrapGroup(DGGhotTweezer(rc = xy, $
-                                             phase = fab_phase(s)))
-            fab_status, s, 'Added a trap'
-            fab_propertysheet, s, /reload
-         end
-
-         'SEL_ROT_REM' : begin  ; Remove a group of traps
-            fab_clearselection, s
-            this = fab_foundtrap(s, xy) ; any group is fair game
-            if isa(this) then begin     ; ... found one
-               obj_destroy, *this       ; ... destroy it
-               (*s).o.traps.project     ; ... update CGH and representation
-               fab_status, s, 'Removed a trap'
-            endif
-            fab_propertysheet, s, /reload
-         end
-
-         'SEL_GRP' : begin
-            this = fab_foundtrap(s, xy, /movable) ; only group movable traps
-            if isa(this) then begin               ; found a trap
-               if isa((*s).selected) then begin   ; ... add to existing group
-                  *(*s).selected->add, *this
-               endif else begin                   ; or create new active group
-                  *this->setproperty, state = 4
-                  (*s).selected = this
-               endelse
-            endif else begin                      ; dragging to make group
-               roi = fab_roi(r0 = xy)             ; ... create ROI
-               (*s).o.overlay.add, roi            ; ... show it in GUI
-               (*s).roi = ptr_new(roi, /no_copy)  ; ... use it to select traps
-               widget_control, (*s).w.screen, /draw_motion_events
-            endelse
-            (*s).action = 4
-            fab_status, s, "Grouping"
-         end
-
-         'SEL_GRP_ADD' : begin               ; Add a trap to the active group
-            this = DGGhotTweezer(rc = xy, $  ; create new optical tweezer
-                                 phase = fab_phase(s))
-            if isa((*s).selected) then begin ; ... add to existing group
-               *(*s).selected->add, this
-               fab_status, s, "Added a trap to the group of traps"
-            endif else begin                 ; ... or create new active group
-               thisgroup = DGGhotTrapGroup(this, state = 4)
-               (*s).action = 4
-               (*s).o.traps.add, thisgroup
-               (*s).selected = ptr_new(thisgroup)
-               fab_status, s, "Created a new group of traps"
-            endelse
-            fab_propertysheet, s, /reload
-         end
-
-         'SEL_GRP_REM' : begin             ; Remove a trap from a group
-            thisgroup = fab_foundtrap(s, xy, trap = thistrap, /movable)
-            if isa(thisgroup) then begin   ; found a group
-               *thisgroup->setproperty, state = 4
-               (*s).action = 4             ; ... so now we're "grouping"
-               (*s).selected = thisgroup   ; can only remove trap from group
-               if *thisgroup.count() ge 2 then begin ; ... with enough traps
-                  *thisgroup->remove, thistrap
-                  (*s).o.traps.add, DGGhotTrapGroup(thistrap, state = 1)
-                  fab_status, s, "Separated a trap from the group"
-               endif
-            endif
-         end
-
-         'STAGE_RIGHT' : (*s).o.stage->step, /right
-         'STAGE_LEFT'  : (*s).o.stage->step, /left
-         'STAGE_UP'    : (*s).o.stage->step, /up
-         'STAGE_DOWN'  : (*s).o.stage->step, /down
-         'STAGE_ZUP'   : (*s).o.stage->step, /zup
-         'STAGE_ZDOWN' : (*s).o.stage->step, /zdown
-
-         else:                  ; unsupported event
-      endcase
-
-      fab_propertysheet, s, /refresh
-   end ; WIDGET_DRAW events
-
-   else: help, event
-endcase
-
+if isa(arg, 'widget_timer') then begin
+   widget_control, arg.top, get_uvalue = s
+   widget_control, arg.id, timer = (*s).timer
+endif else $
+   s = arg
 (*s).o.camera.snap
 (*s).o.screen.draw              ; update the screen
 if (*s).recording then begin
    fn = (*s).o.recorder.write((*s).o.camera.image())
    fab_status, s, 'Wrote: '+fn
 endif
+end
+
+;;;;;
+;
+; FAB_GUI_EVENT
+;
+; Process events from wscreen
+;
+pro fab_gui_event, event
+
+COMPILE_OPT IDL2, HIDDEN
+
+widget_control, event.top, get_uvalue = s
+
+xy = [event.x, event.y]
+case fab_trapaction(event) of
+   'END_ACTION' : begin
+      if (*s).action eq 4 then $
+         fab_grouproi, s $
+      else $
+         fab_clearselection, s
+      widget_control, (*s).w.screen, draw_motion_events = 0
+   end         
+   
+   'MOV_Z': begin               ; Axial motion
+      this = fab_foundtrap(s, xy, /movable)
+      if isa(this) then $
+         *this->moveby, [0., 0., float(event.clicks)]
+   end
+   
+   'MOV': begin                 ; In-plane motion
+      case (*s).action of
+         2: *(*s).selected->moveto, xy
+         3: *(*s).selected->rotateto, xy
+         4: if isa((*s).roi) then $
+            *(*s).roi->setproperty, r1 = xy
+         else:
+      endcase
+   end
+   
+   'SEL_TRANS': begin           ; Select a group of traps for in-plane motion
+      fab_clearselection, s
+      this = fab_foundtrap(s, xy, /movable)  ; only select movable group
+      if isa(this) then begin                ; ... got one
+         *this->setproperty, state = 2       ; ... so translate it
+         (*s).action = 2
+         widget_control, (*s).w.screen, /draw_motion_events
+         fab_status, s, "Translating"
+      endif
+      (*s).selected = this
+   end
+   
+   'SEL_TRANS_ADD' : begin      ; Add a trap in its own group
+      fab_clearselection, s
+      (*s).o.traps.add, $
+         DGGhotTrapGroup(DGGhotTweezer(rc = xy, $
+                                       phase = fab_phase(s)), state = 1)
+      fab_status, s, 'Added a trap'
+      fab_propertysheet, s, /reload
+   end
+   
+   'SEL_TRANS_REM' : begin      ; Remove a group of traps
+      fab_clearselection, s
+      this = fab_foundtrap(s, xy)   ; any trap is fair game
+      if isa(this) then begin       ; ... found one
+         obj_destroy, *this         ; ... destroy it
+         (*s).o.traps.project       ; ... update CGH and representation
+         fab_status, s, 'Removed a trap'
+      endif
+      fab_propertysheet, s, /reload
+   end
+   
+   'SEL_ROT' : begin            ; Select a group of traps for rotation
+      fab_clearselection, s
+      this = fab_foundtrap(s, xy, /movable)     ; only choose movable group
+      if isa(this) then begin                   ; ... found one
+         if *this.count() ge 2 then begin       ; if it has enough traps
+            (*s).selected = this                ; ... select it
+            *this->setcenter                    ; ... update its center
+            *this->setproperty, state = 3       ; ... and rotate it
+            (*s).action = 3
+            widget_control, (*s).w.screen, /draw_motion_events
+            fab_status, s, "Rotating"
+         endif
+      endif
+   end
+   
+   'SEL_ROT_ADD' : begin        ; Add a trap in its own group
+      fab_clearselection, s
+      (*s).o.traps.add, $
+         DGGhotTrapGroup(DGGhotTweezer(rc = xy, $
+                                       phase = fab_phase(s)))
+      fab_status, s, 'Added a trap'
+      fab_propertysheet, s, /reload
+   end
+   
+   'SEL_ROT_REM' : begin        ; Remove a group of traps
+      fab_clearselection, s
+      this = fab_foundtrap(s, xy)   ; any group is fair game
+      if isa(this) then begin       ; ... found one
+         obj_destroy, *this         ; ... destroy it
+         (*s).o.traps.project       ; ... update CGH and representation
+         fab_status, s, 'Removed a trap'
+      endif
+      fab_propertysheet, s, /reload
+   end
+   
+   'SEL_GRP' : begin
+      this = fab_foundtrap(s, xy, /movable)     ; only group movable traps
+      if isa(this) then begin                   ; found a trap
+         if isa((*s).selected) then begin       ; ... add to existing group
+            *(*s).selected->add, *this
+         endif else begin       ; or create new active group
+            *this->setproperty, state = 4
+            (*s).selected = this
+         endelse
+      endif else begin                           ; dragging to make group
+         roi = fab_roi(r0 = xy)                  ; ... create ROI
+         (*s).o.overlay.add, roi                 ; ... show it in GUI
+         (*s).roi = ptr_new(roi, /no_copy)       ; ... use it to select traps
+         widget_control, (*s).w.screen, /draw_motion_events
+      endelse
+      (*s).action = 4
+      fab_status, s, "Grouping"
+   end
+   
+   'SEL_GRP_ADD' : begin                    ; Add a trap to the active group
+      this = DGGhotTweezer(rc = xy, $       ; create new optical tweezer
+                           phase = fab_phase(s))
+      if isa((*s).selected) then begin ; ... add to existing group
+         *(*s).selected->add, this
+         fab_status, s, "Added a trap to the group of traps"
+      endif else begin          ; ... or create new active group
+         thisgroup = DGGhotTrapGroup(this, state = 4)
+         (*s).action = 4
+         (*s).o.traps.add, thisgroup
+         (*s).selected = ptr_new(thisgroup)
+         fab_status, s, "Created a new group of traps"
+      endelse
+      fab_propertysheet, s, /reload
+   end
+   
+   'SEL_GRP_REM' : begin        ; Remove a trap from a group
+      thisgroup = fab_foundtrap(s, xy, trap = thistrap, /movable)
+      if isa(thisgroup) then begin ; found a group
+         *thisgroup->setproperty, state = 4
+         (*s).action = 4                             ; ... so now we're "grouping"
+         (*s).selected = thisgroup                   ; can only remove trap from group
+         if *thisgroup.count() ge 2 then begin       ; ... with enough traps
+            *thisgroup->remove, thistrap
+            (*s).o.traps.add, DGGhotTrapGroup(thistrap, state = 1)
+            fab_status, s, "Separated a trap from the group"
+         endif
+      endif
+   end
+   
+   'STAGE_RIGHT' : (*s).o.stage->step, /right
+   'STAGE_LEFT'  : (*s).o.stage->step, /left
+   'STAGE_UP'    : (*s).o.stage->step, /up
+   'STAGE_DOWN'  : (*s).o.stage->step, /down
+   'STAGE_ZUP'   : (*s).o.stage->step, /zup
+   'STAGE_ZDOWN' : (*s).o.stage->step, /zdown
+   
+   else:                        ; unsupported event
+endcase
+
+fab_propertysheet, s, /refresh
+end
+
+;;;;;
+;
+; FAB_EVENT
+;
+; Is this needed?
+;
+pro fab_event, event
+
+COMPILE_OPT IDL2, HIDDEN
+
+help, event
 end
 
 ;;;;;
@@ -965,14 +981,15 @@ void = widget_button(help_menu, value = 'Recording', $
                      EVENT_PRO = 'fab_help', UVALUE = 'RECORD')
 
 ;; window for drawing images and traps
-;wscreenbase = widget_base(wtlb, event_pro = 'fab_gui_event', /row)
 wscreen = widget_draw(wtlb, $
                       xsize = dimensions[0], $  ; geometry
                       ysize = dimensions[1], $
                       graphics_level = 2,    $  ; object graphics
                       /button_events,        $  ; events
                       /wheel_events,         $
-                      keyboard_events = isa(stage))
+                      keyboard_events = isa(stage), $
+                      event_pro = 'fab_gui_event')
+wtimer = widget_base(wtlb, event_pro = 'fab_video_update')
 
 ;; status line
 wstatusline = widget_base(wtlb, /row)
@@ -1005,6 +1022,7 @@ objects = {fabobjects,                 $
 widgets = {fabwidgets,       $
            tlb:    wtlb,     $  ; top-level widget base
            screen: wscreen,  $  ; draw widget
+           timer:  wtimer,   $  ; timer widget
            status: wstatus,  $  ; status bar
            prop:   0L,       $  ; property sheet (when instantiated)
            help:   0L        $  ; help browser (when instantiated)
@@ -1027,14 +1045,15 @@ s = {fabstate,             $
 
 ps = ptr_new(s, /no_copy)       ; pointer to state structure
 
-;; register the state structure with the top-level widget
+;; provide state structure to event handlers
 widget_control, wtlb, set_uvalue = ps
+cgh.setproperty, callback = 'fab_video_update', userdata = ps, timer = timer
 
 ;; start the event manager
 xmanager, 'fab', wtlb, /no_block, cleanup = 'fab_cleanup'
 
 ;; start processing images
-widget_control, wtlb, timer = 0.
+widget_control, wtimer, timer = 0.
 
 ;; restore calibration constants
 fab_readcalibration, ps

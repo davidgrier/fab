@@ -35,6 +35,19 @@
 ;    BACKGROUND [IGS] background field to be added to hologram.
 ;         Default: None.
 ;
+;    CALLBACK [I S] String containing name of callback procedure that
+;         is called in the course of long calculations.  The callback
+;         function should have the form
+;         CALLBACK, USERDATA, PERCENTAGE
+;         where PERCENTAGE is the fraction of completion.
+;
+;    USERDATA [I S] Pointer to data that will be passed to the
+;         callback function.  If not set, a null pointer will be
+;         passed to the callback function.
+;
+;    TIMER [I S] Floating point interval at which the callback
+;         function is invoked.
+;
 ; METHODS:
 ;    DGGhotCGH::GetProperty
 ;
@@ -83,6 +96,7 @@
 ; 06/12/2012 DGG Renamed phi to data.
 ; 06/20/2012 DGG Don't clobber traps during SetProperty.
 ; 09/11/2013 DGG Introduced BACKGROUND keyword.
+; 09/15/2013 DGG Support for callbacks during CGH calculation.
 ;
 ; Copyright (c) 2011-2013 David G. Grier
 ;-
@@ -112,7 +126,7 @@ pro DGGhotCGH::Compute
 
 COMPILE_OPT IDL2, HIDDEN
 
-self.refining = 0L
+self.refining = 0B
 
 if ~isa(self.slm) then $
    return
@@ -287,6 +301,9 @@ pro DGGhotCGH::SetProperty, slm        = slm,      $
                             kc         = kc,       $
                             eta        = eta,      $
                             xi         = xi,       $
+                            callback   = callback, $
+                            userdata   = userdata, $
+                            timer      = timer,    $
                             _ref_extra = re
 
 COMPILE_OPT IDL2, HIDDEN
@@ -347,6 +364,15 @@ if isa(xi, /scalar, /number) then begin
    doprecompute = 1
 endif
 
+if isa(callback, 'string') then $
+   self.callback = callback
+
+if ptr_valid(userdata) then $
+   self.userdata = userdata
+
+if isa(timer, /number, /scalar) then $
+   self.timer = timer
+
 if doprecompute then self.precompute
 self.compute
    
@@ -362,6 +388,9 @@ function DGGhotCGH::Init, slm        = slm,   $
                           rc         = rc,    $
                           mat        = mat,   $
                           kc         = kc,    $
+                          callback   = callback, $
+                          userdata   = userdata, $
+                          timer      = timer, $
                           _ref_extra = re
 
 COMPILE_OPT IDL2, HIDDEN
@@ -397,6 +426,14 @@ if isa(kc, /number) and n_elements(kc) eq 2 then begin
    self.kc = float(kc)
    self.precompute
 endif
+
+if isa(callback, 'string') then $
+   self.callback = callback
+
+if ptr_valid(userdata) then $
+   self.userdata = userdata
+
+self.timer = isa(timer, /number, /scalar) ? timer : 3600.
 
 if isa(traps) then begin
    if isa(traps[0], 'DGGhotTrap') then begin
@@ -452,20 +489,23 @@ pro DGGhotCGH__define
 COMPILE_OPT IDL2
 
 struct = {DGGhotCGH, $
-          inherits IDLitComponent, $ ; for registered properties
-          inherits IDL_Object,     $ ; implicit get/set methods
-          slm:      obj_new(),     $ ; target SLM
-          traps:    ptr_new(),     $ ; array of trap objects
-          rc:       fltarr(3),     $ ; center of trap coordinate system
-          mat:      fltarr(3, 3),  $ ; transformation matrix
-          kc:       fltarr(2),     $ ; center of hologram
-          dim:      lonarr(2),     $ ; dimensions of hologram
-          x:        ptr_new(),     $ ; coordinates in SLM plane
-          y:        ptr_new(),     $ ;
-          rsq:      ptr_new(),     $ ; polar coordinates in SLM plane
-          theta:    ptr_new(),     $ ;
-          data:     ptr_new(),     $ ; computed hologram
-          background: ptr_new(),   $ ; background hologram
-          refining: 0L             $ ; set if refining the hologram
+          inherits IDLitComponent,   $ ; for registered properties
+          inherits IDL_Object,       $ ; implicit get/set methods
+          slm:        obj_new(),     $ ; target SLM
+          traps:      ptr_new(),     $ ; array of trap objects
+          rc:         fltarr(3),     $ ; center of trap coordinate system
+          mat:        fltarr(3, 3),  $ ; transformation matrix
+          kc:         fltarr(2),     $ ; center of hologram
+          dim:        lonarr(2),     $ ; dimensions of hologram
+          x:          ptr_new(),     $ ; coordinates in SLM plane
+          y:          ptr_new(),     $ ;
+          rsq:        ptr_new(),     $ ; polar coordinates in SLM plane
+          theta:      ptr_new(),     $ ;
+          data:       ptr_new(),     $ ; computed hologram
+          background: ptr_new(),     $ ; background hologram
+          callback:   '',            $ ; callback function for long calculations
+          userdata:   ptr_new(),     $ ; argument for callback function
+          timer:      0.,            $ ; interval at which to execute callback
+          refining:   0B             $ ; set if refining the hologram
          }
 end

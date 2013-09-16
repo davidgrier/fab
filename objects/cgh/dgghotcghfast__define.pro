@@ -52,6 +52,7 @@
 ; 09/02/2012 DGG Fixed bug in trap superposition pointed out by
 ;    David Ruffner and Ellery Russel.
 ; 09/11/2013 DGG Added support for BACKGROUND keyword
+; 09/15/2013 DGG Support for callback functions during long calculations.
 ;
 ; Copyright (c) 2011-2013 David G. Grier, David Ruffner and Ellery Russel
 ;-
@@ -75,6 +76,8 @@ if ~isa(self.traps) then begin ; no traps
    return
 endif
 
+t = systime(1)
+
 ;; field in the plane of the projecting device
 if ptr_valid(self.background) then $
    *self.psi = *self.background $
@@ -85,12 +88,14 @@ foreach trap, *self.traps do begin
    ex = exp(*self.ikx * pr[0] + *self.ikxsq * pr[2])
    ey = exp(*self.iky * pr[1] + *self.ikysq * pr[2])
    *self.psi += (trap.alpha * exp(complex(0., trap.phase))) * (ex # ey)
+   if (systime(1) - t) ge self.timer then begin
+      call_procedure, self.callback, self.userdata
+      t = systime(1)
+   endif
 endforeach
 
 ;; phase of the field in the plane of the projecting device
 *self.phi = bytscl(atan(*self.psi, /phase))
-
-computedone:
 self.slm.setproperty, data = *self.phi
 end
 

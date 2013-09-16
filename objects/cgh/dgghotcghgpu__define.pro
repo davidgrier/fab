@@ -67,6 +67,7 @@
 ; 06/20/2012 DGG gpufltarr can have NAN values unless zeroed
 ; explicitly.
 ; 09/11/2013 DGG Support for BACKGROUND.
+; 09/15/2013 DGG Support for callbacks during computation.
 ;
 ; Copyright (c) 2011-2013 David G. Grier
 ;-
@@ -82,7 +83,8 @@ pro DGGhotCGHGPU::Compute
 
 COMPILE_OPT IDL2, HIDDEN
 
-self.refining = 0L
+self.refining = 0B
+t = systime(1)
 
 if ~isa(self.slm) then $
    return
@@ -127,6 +129,10 @@ foreach trap, *self.traps do begin
                         LHS = *self.repsi, /NONBLOCKING)
    *self.impsi = gpuadd(1., *self.impsi, trap.alpha, *self.b, 0., $
                         LHS = *self.impsi)
+   if (systime(1) - t) ge self.timer then begin
+      call_procedure, self.callback, self.userdata
+      t = systime(1)
+   endif
 endforeach
 
 ;; phase of the field in the plane of the projecting device
@@ -137,7 +143,6 @@ endforeach
 
 *self.data = byte(gpugetarr(*self.phi))
 self.slm.setproperty, data = *self.data
-
 end
 
 ;;;;;
