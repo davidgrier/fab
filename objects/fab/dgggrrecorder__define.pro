@@ -42,13 +42,17 @@
 ;
 ;    DGGgrRecorder::SetProperty
 ;
-;    DGGgrRecorder::Write
+;    DGGgrRecorder::Write()
 ;    SYNTAX:
-;        res = DGGgrRecorder::Write(image)
+;        res = DGGgrRecorder::Write(image, [time])
 ;        
 ;    INPUT:
 ;        image: data to be written to the data directory in the
-;            selected format with the current timestamp for a file name.
+;            selected format with the current timestamp for a file
+;            name.
+;    OPTIONAL INPUT:
+;        time: systime at which image was recorded.
+;            Default: systime(1)
 ;
 ;    OUTPUT:
 ;        res: file name on success, empty string on failure
@@ -60,6 +64,7 @@
 ; 10/13/2011: Written by David G. Grier, New York University
 ; 05/04/2012 DGG Make sure that parameters have the correct type.
 ; 05/15/2012 DGG Write method returns empty string on failure.
+; 09/16/2013 DGG Write accepts optional TIME argument.
 ;
 ; Copyright (c) 2011-2012, David G. Grier
 ;-
@@ -71,9 +76,10 @@
 ; Save one image to a file
 ; Return the file name as a string, or an empty string on failure.
 ;
-function DGGgrRecorder::Write, a
+function DGGgrRecorder::Write, a, time
 
-fn = self.dir + self.timestamp() + '.' + self.formats[self.fmt]
+if n_params() eq 1 then time = -1
+fn = self.dir + self.timestamp(time) + '.' + self.formats[self.fmt]
 
 nbridges = n_elements(*self.bridges)
 foreach bridge, *self.bridges do begin
@@ -95,11 +101,12 @@ end
 ;
 ; returns current system time as a string
 ;
-function DGGgrRecorder::TimeStamp
+function DGGgrRecorder::TimeStamp, time
 
 COMPILE_OPT IDL2, HIDDEN
 
-t = systime(1) + self.timezone * 3600D
+t = (time gt 0) ? time : systime(1)
+t += self.timezone * 3600D
 dsecs = t - floor(t/86400D) * 86400D
 return, string(dsecs, format = '(F012.6)')
 end

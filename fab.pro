@@ -596,7 +596,7 @@ endif else $
 (*s).o.camera.snap
 (*s).o.screen.draw              ; update the screen
 if (*s).recording then begin
-   fn = (*s).o.recorder.write((*s).o.camera.image())
+   fn = (*s).o.recorder.write((*s).o.camera.data, (*s).o.camera.timestamp)
    fab_status, s, 'Wrote: '+fn
 endif
 end
