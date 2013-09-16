@@ -20,6 +20,7 @@
 ;
 ; MODIFICATION HISTORY:
 ; 09/12/13 Written by David G. Grier, New York University
+; 09/16/13 DGG Uses fab_video_update for better integration.
 ;
 ; Copyright (c) 2013 David G. Grier
 ;-
@@ -50,13 +51,12 @@ widget_control, (*s).w.tlb, /clear_events
 
 repeat begin
    t1 = systime(1)
-   (*s).o.camera.snap
-   (*s).o.screen.draw
+   fab_video_update, s
    t2 = systime(1)
    wait, ((*s).timer - (t2 - t1)) > 0
 endrep until (delay - (t2 - t0)) le (*s).timer
 
-widget_control, (*s).w.tlb, timer = (*s).timer
+widget_control, (*s).w.timer, timer = (*s).timer
 
 wait, (delay - (systime(1) - t0)) > 0
 

@@ -34,7 +34,7 @@
 ;    DGGgrCam::Snap(): Take a picture, transfer it to the underlying 
 ;        IDLgrImage, and then return the image data from the Image object.
 ;
-;    DGGgrCam::Image(): Returns image data from the underlying image object.
+;    DGGgrCam::Image(): Returns image data, respecting ORDER.
 ;
 ;    DGGgrCam::Reset: Reset the capture stream.
 ;
