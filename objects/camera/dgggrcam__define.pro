@@ -54,7 +54,7 @@
 ; 05/16/2012 DGG Inherits IDL_Object for implicit Get/SetProperty
 ; methods.
 ; 05/24/2012 DGG Snap() method requires order from IDLgrImage
-; 09/16/2013 DGG Support for timestamps.
+; 09/16/2013 DGG Support for timestamps.  Simplify object syntax.
 ; 
 ; Copyright (c) 2011-2013 David G. Grier
 ;-
@@ -84,8 +84,7 @@ function DGGgrCam::Image
 
 COMPILE_OPT IDL2, HIDDEN
 
-self->IDLgrImage::GetProperty, order = order
-if order eq 0 then $
+if self.order eq 0 then $
    return, *self.data
 
 ndx = (self.grayscale) ? 2 : 3
@@ -126,7 +125,7 @@ COMPILE_OPT IDL2, HIDDEN
 ; Uniformly distributed random values
 data = byte(255*randomu(seed, self.dimensions[0], self.dimensions[1]))
 self.timestamp = systime(1)
-self.setproperty, data = data
+self.IDLgrImage::SetProperty, data = data
 end
 
 ;;;;;
@@ -141,20 +140,10 @@ COMPILE_OPT IDL2, HIDDEN
 
 if ~isa(filename, 'STRING') then return
 
-self.getproperty, order = order
-
-if (order eq 0) then begin
-   if isa(format, 'STRING') then $
-      write_image, filename, *self.data, format $
-   else $
-      write_gdf, *self.data, filename
-endif else begin   
-   ndx = (self.grayscale) ? 2 : 3
-   if isa(format, 'STRING') then $
-      write_image, filename, reverse(*self.data, ndx), format $
-   else $
-      write_gdf, reverse(*self.data, ndx), filename
-endelse
+if isa(format, 'STRING') then $
+   write_image, filename, self.image(), format $
+else $
+   write_gdf, *self.image(), filename
 end
 
 ;;;;;
