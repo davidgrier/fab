@@ -202,6 +202,7 @@ self.setproperty, data = *self.buffer
 self.stream = ptr_new(s, /no_copy)
 
 self.name = 'DGGgrCam_OpenCV'
+self.description = 'OpenCV Camera'
 self->registerproperty, 'brightness', /FLOAT, NAME = 'Brightness', $
                         DESCRIPTION = 'Camera brightness', $
                         VALID_RANGE = [0., 1., 0.01]

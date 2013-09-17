@@ -149,7 +149,10 @@ if n_elements(a) le 1 then $
 
 self.buffer = ptr_new(a, /no_copy)
 self.setproperty, data = a, /no_copy
-self.stream = ptr_new(stream);, /no_copy)
+self.stream = ptr_new(stream)
+
+self.name = 'DGGgrCam_V4L2'
+self.description = 'V4L2 Camera'
 
 return, 1
 end

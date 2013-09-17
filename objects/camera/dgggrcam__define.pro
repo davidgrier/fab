@@ -235,8 +235,8 @@ self.grayscale = keyword_set(grayscale)
 self.debug = keyword_set(debug)
 
 self.name = 'DGGgrCam'
-self.description = 'Camera'
-self->registerproperty, 'name', /STRING, NAME = 'NAME', /HIDE
+self.description = 'Generic Camera'
+self->registerproperty, 'name', /STRING, NAME = 'NAME'
 
 return, 1
 end
