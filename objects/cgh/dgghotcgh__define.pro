@@ -354,10 +354,11 @@ if arg_present(background) then begin
             bg = complex(background)
             break
          end
-         else:
+         else: bg = complexarr(self.dim[0], self.dim[1])
       endswitch
 
       self.background = ptr_new(bg, /no_copy)
+   endif
 endif
 
 if isa(rc, /number) then begin
@@ -455,10 +456,11 @@ if arg_present(background) then begin
             bg = complex(background)
             break
          end
-         else:
+         else: bg = complexarr(self.dim[0], self.dim[1])
       endswitch
 
       self.background = ptr_new(bg, /no_copy)
+   endif
 endif
 
 if isa(rc, /number) then begin
