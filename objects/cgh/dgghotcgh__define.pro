@@ -33,6 +33,11 @@
 ;         Default: Center of SLM.
 ;
 ;    BACKGROUND [IGS] background field to be added to hologram.
+;         If background is an integer type, assume that it is a scaled
+;         phase, cast into the range 0..2Pi and then cast to a field.
+;         If it is a floating point type, assume that it is a phase
+;         and cast to a field.
+;         If it is complex, then assume it is a field, and do not cast.
 ;         Default: None.
 ;
 ;    CALLBACK [I S] String containing name of callback procedure that
@@ -97,6 +102,7 @@
 ; 06/20/2012 DGG Don't clobber traps during SetProperty.
 ; 09/11/2013 DGG Introduced BACKGROUND keyword.
 ; 09/15/2013 DGG Support for callbacks during CGH calculation.
+; 10/03/2013 DGG Support for different BACKGROUND types.
 ;
 ; Copyright (c) 2011-2013 David G. Grier
 ;-
@@ -327,8 +333,31 @@ if arg_present(traps) then begin
 endif
 
 if arg_present(background) then begin
-   if array_equal(size(background, /dimensions), self.dim) then $
-      self.background = ptr_new(background)
+   if (n_elements(background) eq self.dim[0]*self.dim[1]) then begin
+      switch typename(background) of
+         'BYTE':
+         'INT':
+         'LONG':
+         'ULONG':
+         'LONG64':
+         'ULONG64': begin
+            bg = exp((2.*!pi/max(background)) * complex(0., background))
+            break
+         end
+         'FLOAT':
+         'DOUBLE': begin
+            bg = exp(complex(0., background))
+            break
+         end
+         'COMPLEX':
+         'DCOMPLEX': begin
+            bg = complex(background)
+            break
+         end
+         else:
+      endswitch
+
+      self.background = ptr_new(bg, /no_copy)
 endif
 
 if isa(rc, /number) then begin
@@ -404,9 +433,32 @@ if isa(slm, 'DGGhotSLM') then begin
    self.precompute
 endif
 
-if isa(background, /number, /array) then begin
-   if array_equal(size(background, /dimensions), self.dim) then $
-      self.background = ptr_new(background)
+if arg_present(background) then begin
+   if (n_elements(background) eq self.dim[0]*self.dim[1]) then begin
+      switch typename(background) of
+         'BYTE':
+         'INT':
+         'LONG':
+         'ULONG':
+         'LONG64':
+         'ULONG64': begin
+            bg = exp((2.*!pi/max(background)) * complex(0., background))
+            break
+         end
+         'FLOAT':
+         'DOUBLE': begin
+            bg = exp(complex(0., background))
+            break
+         end
+         'COMPLEX':
+         'DCOMPLEX': begin
+            bg = complex(background)
+            break
+         end
+         else:
+      endswitch
+
+      self.background = ptr_new(bg, /no_copy)
 endif
 
 if isa(rc, /number) then begin
