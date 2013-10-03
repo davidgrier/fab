@@ -68,8 +68,10 @@
 ; explicitly.
 ; 09/11/2013 DGG Support for BACKGROUND.
 ; 09/15/2013 DGG Support for callbacks during computation.
+; 10/03/2013 DGG and David B. Ruffner project background even if there
+;    are no traps
 ;
-; Copyright (c) 2011-2013 David G. Grier
+; Copyright (c) 2011-2013 David G. Grier and David B. Ruffner
 ;-
 
 ;;;;;
@@ -89,12 +91,6 @@ t = systime(1)
 if ~isa(self.slm) then $
    return
 
-if ~isa(self.traps) then begin  ; no traps ...
-   *self.data *= 0b              ; ... so send a blank CGH
-   self.slm.setproperty, data = *self.data
-   return
-endif
-
 ;; field in the plane of the projecting device
 if ptr_valid(self.background) then begin
    *self.repsi = gpuputarr(real_part(*self.background), $
@@ -108,32 +104,34 @@ endif else begin
                         LHS = *self.impsi, /NONBLOCKING)
 endelse
 
-foreach trap, *self.traps do begin
-   pr = self.mat # (trap.rc - self.rc)
-   *self.phi = gpuadd(pr[0], *self.x, pr[1], *self.y, trap.phase,  $
-                      LHS = *self.phi)
-   *self.phi = gpuadd(1., *self.phi, pr[2], *self.rsq, 0., LHS = *self.phi)
-   if trap.ell ne 0 then $
-      *self.phi = gpuadd(1., *self.phi, trap.ell, *self.theta, 0., $
+if isa(self.traps) then begin
+   foreach trap, *self.traps do begin
+      pr = self.mat # (trap.rc - self.rc)
+      *self.phi = gpuadd(pr[0], *self.x, pr[1], *self.y, trap.phase,  $
                          LHS = *self.phi)
-   if isa(trap.phi) then $
-      *self.phi = gpuadd(*self.phi, *trap.phi, LHS = *self.phi)
-   *self.a = gpucos(*self.phi, LHS = *self.a, /NONBLOCKING)
-   *self.b = gpusin(*self.phi, LHS = *self.b)
-   if isa(trap.amplitude) then begin
-      *self.a = gpumult(*self.a, *trap.amplitude, $
-                        LHS = *self.a, /NONBLOCKING)
-      *self.b = gpumult(*self.b, *trap.amplitude, LHS = *self.b)
-   endif
-   *self.repsi = gpuadd(1., *self.repsi, trap.alpha, *self.a, 0., $
-                        LHS = *self.repsi, /NONBLOCKING)
-   *self.impsi = gpuadd(1., *self.impsi, trap.alpha, *self.b, 0., $
-                        LHS = *self.impsi)
-   if (systime(1) - t) ge self.timer then begin
-      call_procedure, self.callback, self.userdata
-      t = systime(1)
-   endif
-endforeach
+      *self.phi = gpuadd(1., *self.phi, pr[2], *self.rsq, 0., LHS = *self.phi)
+      if trap.ell ne 0 then $
+         *self.phi = gpuadd(1., *self.phi, trap.ell, *self.theta, 0., $
+                            LHS = *self.phi)
+      if isa(trap.phi) then $
+         *self.phi = gpuadd(*self.phi, *trap.phi, LHS = *self.phi)
+      *self.a = gpucos(*self.phi, LHS = *self.a, /NONBLOCKING)
+      *self.b = gpusin(*self.phi, LHS = *self.b)
+      if isa(trap.amplitude) then begin
+         *self.a = gpumult(*self.a, *trap.amplitude, $
+                           LHS = *self.a, /NONBLOCKING)
+         *self.b = gpumult(*self.b, *trap.amplitude, LHS = *self.b)
+      endif
+      *self.repsi = gpuadd(1., *self.repsi, trap.alpha, *self.a, 0., $
+                           LHS = *self.repsi, /NONBLOCKING)
+      *self.impsi = gpuadd(1., *self.impsi, trap.alpha, *self.b, 0., $
+                           LHS = *self.impsi)
+      if (systime(1) - t) ge self.timer then begin
+         call_procedure, self.callback, self.userdata
+         t = systime(1)
+      endif
+   endforeach
+endif
 
 ;; phase of the field in the plane of the projecting device
 ; scale from 0 to 255

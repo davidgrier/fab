@@ -52,9 +52,11 @@
 ; 09/02/2012 DGG Fixed bug in trap superposition pointed out by
 ;    David Ruffner and Ellery Russel.
 ; 09/11/2013 DGG Added support for BACKGROUND keyword
-; 09/15/2013 DGG Support for callback functions during long calculations.
+; 09/15/2013 DGG Support for callback functions during long
+; calculations.
+; 10/03/2013 DGG and DBR Project background even if there are no traps.
 ;
-; Copyright (c) 2011-2013 David G. Grier, David Ruffner and Ellery Russel
+; Copyright (c) 2011-2013 David G. Grier, David B. Ruffner and Ellery Russel
 ;-
 
 ;;;;;
@@ -70,12 +72,6 @@ COMPILE_OPT IDL2, HIDDEN
 if ~isa(self.slm) then $
    return
 
-if ~isa(self.traps) then begin ; no traps
-   *self.data *= 0b
-   self.slm.setproperty, data = *self.data
-   return
-endif
-
 t = systime(1)
 
 ;; field in the plane of the projecting device
@@ -83,16 +79,19 @@ if ptr_valid(self.background) then $
    *self.psi = *self.background $
 else $
    *self.psi *= complex(0.)
-foreach trap, *self.traps do begin
-   pr = self.mat # (trap.rc - self.rc)
-   ex = exp(*self.ikx * pr[0] + *self.ikxsq * pr[2])
-   ey = exp(*self.iky * pr[1] + *self.ikysq * pr[2])
-   *self.psi += (trap.alpha * exp(complex(0., trap.phase))) * (ex # ey)
-   if (systime(1) - t) ge self.timer then begin
-      call_procedure, self.callback, self.userdata
-      t = systime(1)
-   endif
-endforeach
+
+if isa(self.traps) then begin
+   foreach trap, *self.traps do begin
+      pr = self.mat # (trap.rc - self.rc)
+      ex = exp(*self.ikx * pr[0] + *self.ikxsq * pr[2])
+      ey = exp(*self.iky * pr[1] + *self.ikysq * pr[2])
+      *self.psi += (trap.alpha * exp(complex(0., trap.phase))) * (ex # ey)
+      if (systime(1) - t) ge self.timer then begin
+         call_procedure, self.callback, self.userdata
+         t = systime(1)
+      endif
+   endforeach
+endif
 
 ;; phase of the field in the plane of the projecting device
 *self.data = bytscl(atan(*self.psi, /phase))
