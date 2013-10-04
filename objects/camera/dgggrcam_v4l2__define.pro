@@ -86,7 +86,7 @@ end
 ; underlying IDLgrImage object.
 ;
 pro DGGgrCam_V4L2::GetProperty, device_name = device_name, $
-                                  _ref_extra = re
+                                _ref_extra = re
 
 COMPILE_OPT IDL2, HIDDEN
 
@@ -129,9 +129,6 @@ if (error ne 0L) then begin
    return, 0
 endif
 
-if (self->DGGgrCam::Init(_extra = re) ne 1) then $
-   return, 0
-
 if isa(device_name, 'String') then $
    self.device_name = device_name $
 else $
@@ -147,8 +144,12 @@ a = idlv4l2_readframe(stream, gray = self.grayscale, debug = self.debug)
 if n_elements(a) le 1 then $
    return, 0
 
+if (self->DGGgrCam::Init(a, _extra = re) ne 1) then begin
+   idlv4l2_close, stream
+   return, 0
+endif
+
 self.buffer = ptr_new(a, /no_copy)
-self.setproperty, data = a, /no_copy
 self.stream = ptr_new(stream)
 
 self.name = 'DGGgrCam_V4L2'

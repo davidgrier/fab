@@ -84,7 +84,8 @@ function DGGgrCam::Image
 
 COMPILE_OPT IDL2, HIDDEN
 
-if self.order eq 0 then $
+self.getproperty, order = order
+if order eq 0 then $
    return, *self.data
 
 ndx = (self.grayscale) ? 2 : 3
@@ -221,15 +222,12 @@ function DGGgrCam::Init, imagedata, $
 
 COMPILE_OPT IDL2, HIDDEN
 
-if isa(imagedata, /NUMBER, /ARRAY) then $
-   ok = self->IDLgrImage::Init(imagedata, _extra = re) $
-else $
-   ok = self->IDLgrImage::Init(_extra = re)
+if ~isa(imagedata, /NUMBER, /ARRAY) then $
+   imagedata = bytarr(640, 480)
+
+ok = self->IDLgrImage::Init(imagedata, _extra = re)
 if ~ok then $
    return, 0B
-
-if self.dimensions[0] eq 0 then $
-   self.dimensions = [640, 480]
 
 self.grayscale = keyword_set(grayscale)
 self.debug = keyword_set(debug)
