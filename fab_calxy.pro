@@ -23,7 +23,7 @@ function fab_calxy_find, s, rc
 COMPILE_OPT IDL2, HIDDEN
 
 a = fab_snap(s, delay=1.5, /gray) ; wait to settle and avoid flicker
-q = fastfeature(a, 50)
+q = fastfeature(a, 100)
 ;q = feature(bpass(a, 1, 7), 9, 30, pickn = 2, /quiet)
 ; exclude central spot from consideration ...
 if (n_params() eq 2) and (n_elements(q[0, *]) gt 1) then begin
@@ -37,7 +37,7 @@ m = max(q[2,*], ndx)
 
 ; handy dandy debugging code ...
 ; plotimage, bytscl(a), /iso
-; plots, q[0, ndx], q[1, ndx], psym = circ()
+; plots, q[0, ndx], q[1, ndx], psym = circ(rad = 2)
 
 return, q[0:1,ndx]
 end

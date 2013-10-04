@@ -65,7 +65,7 @@ ok = call_external("idlv4l2.so", "idlv4l2_readframe", $
                    (*self.stream).fd, *(self.buffer))
 if ok then begin
    self.timestamp = systime(1)
-   self.setproperty, data = *self.buffer;, /no_copy
+   self.setproperty, data = *self.buffer
 endif
 end
 
@@ -129,6 +129,9 @@ if (error ne 0L) then begin
    return, 0
 endif
 
+if (self.DGGgrCam::Init(_extra = re) ne 1) then $
+   return, 0
+
 if isa(device_name, 'String') then $
    self.device_name = device_name $
 else $
@@ -144,11 +147,7 @@ a = idlv4l2_readframe(stream, gray = self.grayscale, debug = self.debug)
 if n_elements(a) le 1 then $
    return, 0
 
-if (self->DGGgrCam::Init(a, _extra = re) ne 1) then begin
-   idlv4l2_close, stream
-   return, 0
-endif
-
+self.setproperty, data = a
 self.buffer = ptr_new(a, /no_copy)
 self.stream = ptr_new(stream)
 
