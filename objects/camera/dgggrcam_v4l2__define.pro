@@ -60,9 +60,8 @@ pro DGGgrCam_V4L2::Snap
 
 COMPILE_OPT IDL2, HIDDEN
 
-ok = call_external("idlv4l2.so", "idlv4l2_readframe", $
-                   /cdecl, self.debug, $
-                   (*self.stream).fd, *(self.buffer))
+ok = call_external("idlv4l2.so", "idlv4l2_readframe", /cdecl, self.debug, $
+                   self.fd, *(self.buffer))
 if ok then begin
    self.timestamp = systime(1)
    self.setproperty, data = *self.buffer
@@ -96,6 +95,26 @@ end
 
 ;;;;;
 ;
+; DGGgrCam_V4L2::CleanupV4L2
+;
+; Stop capturing and uninitialize V4L2
+;
+pro DGGgrCam_V4L2::CleanupV4L2
+
+COMPILE_OPT IDL2, HIDDEN
+
+if self.capturing then $
+   ok = call_external(self.dlm, 'idlv4l2_stopcapture', /cdecl, self.debug, $
+                      self.fd)
+if self.initialized then $
+   ok = call_external(self.dlm, 'idlv4l2_uninit', /cdecl, self.debug, $
+                      self.fd)
+ok = call_external(self.dlm, 'idlv4l2_close', /cdecl, self.debug, $
+                   self.fd)
+end
+
+;;;;;
+;
 ; DGGgrCam_V4L2::Cleanup
 ;
 ; Close video stream
@@ -104,9 +123,8 @@ pro DGGgrCam_V4L2::Cleanup
 
 COMPILE_OPT IDL2, HIDDEN
 
+self.CleanupV4L2
 self->DGGgrCam::Cleanup
-idlv4l2_close, *self.stream
-ptr_free, self.stream
 ptr_free, self.buffer
 end
 
@@ -118,7 +136,8 @@ end
 ; Open the video stream
 ; Load an image into the IDLgrImage object
 ;
-function DGGgrCam_V4L2::Init, device_name = device_name, $
+function DGGgrCam_V4L2::Init, dlm = dlm, $
+                              device_name = device_name, $
                               _ref_extra = re
 
 COMPILE_OPT IDL2, HIDDEN
@@ -132,20 +151,43 @@ endif
 if (self.DGGgrCam::Init(_extra = re) ne 1) then $
    return, 0
 
+if isa(dlm, 'string') then $
+   self.dlm = dlm $
+else $
+   self.dlm = '/usr/local/IDL/idlv4l2/idlv4l2.so'
+
 if isa(device_name, 'String') then $
    self.device_name = device_name $
 else $
-   self.device_name = "/dev/video0"
+   self.device_name = '/dev/video0'
 
-stream = idlv4l2_open(self.device_name, debug = self.debug)
+ok = call_external(self.dlm, 'idlv4l2_open', /cdecl, self.debug, $
+                   self.device_name, self.device_name, self.fd)
+if ~ok then return, 0
 
-if ~isa(stream, 'IDLV4L2') then $
+w = 0L
+h = 0L
+self.initialized = call_external(self.dlm, 'idlv4l2_init', /cdecl, self.debug, $
+                                 self.fd, w, h)
+if ~self.initialized then begin
+   self.CleanupV4L2
    return, 0
+endif
 
-a = idlv4l2_readframe(stream, gray = self.grayscale, debug = self.debug)
-
-if n_elements(a) le 1 then $
+self.capturing = call_external(self.dlm, 'idlv4l2_startcapture', /cdecl, self.debug, $
+                               self.fd)
+if ~self.capturing then begin
+   self.CleanupV4L2
    return, 0
+endif
+
+a = bytarr(w, h, /nozero)
+ok = call_external(self.dlm, 'idlv4l2_readframe', /cdecl, self.debug, $
+                   self.fd, a)
+if ~ok then begin
+   self.CleanupV4L2
+   return, 0
+endif
 
 self.setproperty, data = a
 self.buffer = ptr_new(a, /no_copy)
@@ -167,9 +209,13 @@ pro DGGgrCam_V4L2__define
 
 COMPILE_OPT IDL2
 
-struct = {DGGgrCam_V4L2,   $
-          inherits DGGgrCam, $
-          device_name: "",    $
+struct = {DGGgrCam_V4L2,      $
+          inherits DGGgrCam,  $
+          dlm: "",            $ ; shared object library
+          device_name: "",    $ ; device file
+          fd: 0L,             $ ; file descriptor for video device
+          initialized: 0,     $
+          capturing: 0,       $
           buffer: ptr_new(),  $
           stream: ptr_new()   $
          }

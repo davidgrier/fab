@@ -53,8 +53,10 @@
 ;    David Ruffner and Ellery Russel.
 ; 09/11/2013 DGG Added support for BACKGROUND keyword
 ; 09/15/2013 DGG Support for callback functions during long
-; calculations.
-; 10/03/2013 DGG and DBR Project background even if there are no traps.
+;    calculations.
+; 10/03/2013 DGG and DBR Project background even if there are no
+;    traps.
+; 10/26/2013 DGG Can rely on background being present.
 ;
 ; Copyright (c) 2011-2013 David G. Grier, David B. Ruffner and Ellery Russel
 ;-
@@ -75,12 +77,9 @@ if ~isa(self.slm) then $
 t = systime(1)
 
 ;; field in the plane of the projecting device
-if ptr_valid(self.background) then $
-   *self.psi = *self.background $
-else $
-   *self.psi *= complex(0.)
+*self.psi = *self.background
 
-if isa(self.traps) then begin
+if ptr_valid(self.traps) then begin
    foreach trap, *self.traps do begin
       pr = self.mat # (trap.rc - self.rc)
       ex = exp(*self.ikx * pr[0] + *self.ikxsq * pr[2])

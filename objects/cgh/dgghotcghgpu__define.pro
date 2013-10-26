@@ -69,7 +69,9 @@
 ; 09/11/2013 DGG Support for BACKGROUND.
 ; 09/15/2013 DGG Support for callbacks during computation.
 ; 10/03/2013 DGG and David B. Ruffner project background even if there
-;    are no traps
+;    are no traps.
+; 10/26/2013 DGG Can rely on background image begin defined.  Update
+;    for GPULib 1.6.0.
 ;
 ; Copyright (c) 2011-2013 David G. Grier and David B. Ruffner
 ;-
@@ -92,19 +94,12 @@ if ~isa(self.slm) then $
    return
 
 ;; field in the plane of the projecting device
-if ptr_valid(self.background) then begin
-   *self.repsi = gpuputarr(real_part(*self.background), $
-                           LHS = *self.repsi, /NONBLOCKING)
-   *self.impsi = gpuputarr(imaginary(*self.background), $
-                           LHS = *self.impsi, /NONBLOCKING)
-endif else begin
-   *self.repsi = gpuadd(0., *self.x, 0., *self.x, 0., $
-                        LHS = *self.repsi, /NONBLOCKING)
-   *self.impsi = gpuadd(0., *self.x, 0., *self.x, 0., $
-                        LHS = *self.impsi, /NONBLOCKING)
-endelse
+*self.repsi = gpuputarr(real_part(*self.background), $
+                        LHS = *self.repsi);, /NONBLOCKING)
+*self.impsi = gpuputarr(imaginary(*self.background), $
+                        LHS = *self.impsi);, /NONBLOCKING)
 
-if isa(self.traps) then begin
+if ptr_valid(self.traps) then begin
    foreach trap, *self.traps do begin
       pr = self.mat # (trap.rc - self.rc)
       *self.phi = gpuadd(pr[0], *self.x, pr[1], *self.y, trap.phase,  $

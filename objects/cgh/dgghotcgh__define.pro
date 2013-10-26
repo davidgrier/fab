@@ -103,9 +103,46 @@
 ; 09/11/2013 DGG Introduced BACKGROUND keyword.
 ; 09/15/2013 DGG Support for callbacks during CGH calculation.
 ; 10/03/2013 DGG Support for different BACKGROUND types.
+; 10/26/2013 DGG Project background by default.
 ;
 ; Copyright (c) 2011-2013 David G. Grier
 ;-
+
+;;;;;
+;
+; DGGhotCGH::InstallBackground
+;
+pro DGGhotCGH::InstallBackground, background
+
+COMPILE_OPT IDL2, HIDDEN
+
+if ~isa(self.slm, 'DGGhotSLM') then return
+
+if (n_elements(background) eq self.dim[0]*self.dim[1]) then begin
+   switch typename(background) of
+      'BYTE':
+      'INT':
+      'LONG':
+      'ULONG':
+      'LONG64':
+      'ULONG64': begin
+         *self.background = exp((2.*!pi/max(background)) * complex(0., background))
+         break
+      end
+      'FLOAT':
+      'DOUBLE': begin
+         *self.background = exp(complex(0., background))
+         break
+      end
+      'COMPLEX':
+      'DCOMPLEX': begin
+         *self.background = complex(background)
+         break
+      end
+      else: *self.background = complexarr(self.dim[0], self.dim[1])
+   endswitch
+endif
+end
 
 ;;;;;
 ;
@@ -137,10 +174,7 @@ self.refining = 0B
 if ~isa(self.slm) then $
    return
 
-if ptr_valid(self.background) then $
-   *self.data = *self.background $
-else $
-   *self.data *= 0b             ; ... send a blank CGH
+*self.data = *self.background
 
 self.slm.setproperty, data = *self.data
 
@@ -199,6 +233,10 @@ self->setpropertyattribute, 'xi',  VALID_RANGE = [0., self.dim[1], 0.1]
 data = bytarr(self.dim[0], self.dim[1])
 self.data = ptr_new(data, /no_copy)
 
+;; background
+bg = complexarr(self.dim[0], self.dim[1])
+self.background = ptr_new(bg, /no_copy)
+
 end
 
 ;;;;;
@@ -241,7 +279,7 @@ if arg_present(data) then $
    data = *self.data
 
 if arg_present(background) then $
-   background = ptr_valid(self.background) ? *self.background : 0
+   background = *self.background
 
 if arg_present(rc) then $
    rc = self.rc
@@ -332,34 +370,8 @@ if arg_present(traps) then begin
    endif
 endif
 
-if arg_present(background) then begin
-   if (n_elements(background) eq self.dim[0]*self.dim[1]) then begin
-      switch typename(background) of
-         'BYTE':
-         'INT':
-         'LONG':
-         'ULONG':
-         'LONG64':
-         'ULONG64': begin
-            bg = exp((2.*!pi/max(background)) * complex(0., background))
-            break
-         end
-         'FLOAT':
-         'DOUBLE': begin
-            bg = exp(complex(0., background))
-            break
-         end
-         'COMPLEX':
-         'DCOMPLEX': begin
-            bg = complex(background)
-            break
-         end
-         else: bg = complexarr(self.dim[0], self.dim[1])
-      endswitch
-
-      self.background = ptr_new(bg, /no_copy)
-   endif
-endif
+if isa(background, /number, /array) then $
+   self.installbackground, background
 
 if isa(rc, /number) then begin
    case n_elements(rc) of
@@ -434,34 +446,8 @@ if isa(slm, 'DGGhotSLM') then begin
    self.precompute
 endif
 
-if arg_present(background) then begin
-   if (n_elements(background) eq self.dim[0]*self.dim[1]) then begin
-      switch typename(background) of
-         'BYTE':
-         'INT':
-         'LONG':
-         'ULONG':
-         'LONG64':
-         'ULONG64': begin
-            bg = exp((2.*!pi/max(background)) * complex(0., background))
-            break
-         end
-         'FLOAT':
-         'DOUBLE': begin
-            bg = exp(complex(0., background))
-            break
-         end
-         'COMPLEX':
-         'DCOMPLEX': begin
-            bg = complex(background)
-            break
-         end
-         else: bg = complexarr(self.dim[0], self.dim[1])
-      endswitch
-
-      self.background = ptr_new(bg, /no_copy)
-   endif
-endif
+if isa(background, /number, /array) then $
+   self.installbackground, background
 
 if isa(rc, /number) then begin
    case n_elements(rc) of
