@@ -161,9 +161,11 @@ if isa(device_name, 'String') then $
 else $
    self.device_name = '/dev/video0'
 
+fd = 0L
 ok = call_external(self.dlm, 'idlv4l2_open', /cdecl, self.debug, $
-                   self.device_name, self.device_name, self.fd)
+                   self.device_name, fd)
 if ~ok then return, 0
+self.fd = fd
 
 w = 0L
 h = 0L

@@ -827,8 +827,8 @@ if ~isa(calfile, 'string') then $
 ;; camera object for video
 if isa(camera_object, 'String') then $
    camera = obj_new(camera_object, /gray, _extra = e)
-if ~isa(camera, 'DGGgrCam') then $
-   camera = DGGgrCAM_PVAPI(_extra = e)
+;if ~isa(camera, 'DGGgrCam') then $
+;   camera = DGGgrCAM_PVAPI(_extra = e)
 if ~isa(camera, 'DGGgrCam') then $
    camera = DGGgrCAM_V4L2(/gray, /debug, _extra = e)
 if ~isa(camera, 'DGGgrCam') then $
